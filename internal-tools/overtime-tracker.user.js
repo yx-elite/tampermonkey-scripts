@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         HRMS OT Tracker
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Automate OT calculation (User login is required for authentication)
+// @version      1.0.1
+// @description  Fix past attendance check bug
 // @author       yx-elite
 // @match        https://app.mal-pentamaster.com.my/HRMS*
 // @updateURL    https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/overtime-tracker.user.js
@@ -72,6 +72,10 @@
         .pm-ot-target-badge {
             background: rgba(96, 165, 250, 0.1); color: #60a5fa;
             padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; white-space: nowrap;
+        }
+        .pm-ot-footer {
+            text-align: center; font-size: 11px; color: #71717a; margin-top: 14px;
+            font-weight: 500; letter-spacing: 0.3px;
         }
     `;
     document.head.appendChild(style);
@@ -167,13 +171,13 @@
                     let typeIn = cells[6].textContent.trim().toUpperCase();
                     let typeOut = cells[12].textContent.trim().toUpperCase();
 
-                    // FIX: Accept both 'IN' and 'WORK IN'
-                    if (typeIn === 'WORK IN' || typeIn === 'IN') {
+                    // FIX: Accept both 'IN', 'WORK IN' and 'MEAL IN'
+                    if (typeIn.includes('IN')) {
                         let d = parseCellDate(3, 5);
                         if (d && !isNaN(d)) events.push({ type: 'IN', time: d });
                     }
-                    // FIX: Accept both 'OUT' and 'WORK OUT'
-                    if (typeOut === 'WORK OUT' || typeOut === 'OUT') {
+                    // FIX: Accept both 'OUT', 'WORK OUT' and 'MEAL OUT'
+                    if (typeOut.includes('OUT')) {
                         let d = parseCellDate(9, 11);
                         if (d && !isNaN(d)) events.push({ type: 'OUT', time: d });
                     }
@@ -220,12 +224,25 @@
             const now = new Date();
             let firstIn = blocks.length > 0 ? blocks[0].inTime : null;
 
+            let isPastData = false;
             let adjEndTime = null;
             let penaltyMins = 0;
             let priorOtMs = 0;
             let currentOtMs = 0;
 
             if (firstIn) {
+                // Check if the data is from a past date (Event triggered manually)
+                let shiftStart = new Date(firstIn);
+                let todayRef = new Date(now);
+                if (todayRef.getHours() < 7) {
+                    todayRef.setDate(todayRef.getDate() - 1);
+                }
+                todayRef.setHours(0, 0, 0, 0);
+                shiftStart.setHours(0, 0, 0, 0);
+ 
+                if (shiftStart.getTime() < todayRef.getTime()) {
+                    isPastData = true;
+                }
                 let baseEndTimeMs = firstIn.getTime() + (9.5 * 60 * 60 * 1000);
 
                 for (let i = 0; i < blocks.length - 1; i++) {
@@ -247,7 +264,7 @@
 
                 blocks.forEach(b => {
                     let bIn = b.inTime.getTime();
-                    let bOut = b.outTime ? b.outTime.getTime() : now.getTime();
+                    let bOut = b.outTime ? b.outTime.getTime() : (isPastData ? bIn : now.getTime());
                     let endRef = adjEndTime.getTime();
 
                     let otStart = Math.max(bIn, endRef);
@@ -279,6 +296,10 @@
             if (!firstIn) {
                 t1Title = "Awaiting Data"; t1SubText = "No active shift";
                 t2Title = "Awaiting Data"; t2SubText = "No active shift";
+            } else if (isPastData) {
+                // Displaying historical data
+                t1Title = "Past Record"; t1SubText = "-"; t1SubTitle = "Targets Disabled";
+                t2Title = "Past Record"; t2SubText = "-"; t2SubTitle = "Targets Disabled";
             } else if (firstIn && totalOtMs > 0) {
                 t1SubTitle = `${(target1Mins/60).toFixed(1)}h Milestone`;
                 t1TimeText = formatAMPM(new Date(now.getTime() + (target1Mins - totalMins) * 60000));
@@ -362,6 +383,9 @@
                                 <span class="pm-ot-target-badge" style="background: transparent; border: 1px solid #3f3f46; color: #a1a1aa;">${t2SubText}</span>
                             </div>
                         </div>
+                    </div>
+                    <div class="pm-ot-footer">
+                        Build Version: v${GM_info.script.version}
                     </div>
                 </div>
             `;
