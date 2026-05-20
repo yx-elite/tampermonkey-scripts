@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         HRMS OT Tracker
-// @namespace    http://tampermonkey.net/
-// @version      1.0.1
-// @description  Fix past attendance check bug
+// @namespace    https://github.com/yx-elite/
+// @version      1.0.2
+// @description  Automatically track OT with real time updates
 // @author       yx-elite
 // @match        https://app.mal-pentamaster.com.my/HRMS*
+// @match        https://hrms.pentamaster.com.my/HRMS*
 // @updateURL    https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/overtime-tracker.user.js
 // @downloadURL  https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/overtime-tracker.user.js
 // @grant        none
