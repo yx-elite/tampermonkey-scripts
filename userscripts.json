@@ -5,5 +5,12 @@
     "latestVersion": "1.0.2",
     "description": "Automatically track overtime with real time updates",
     "installUrl": "https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/overtime-tracker.user.js"
+  },
+  {
+    "id": "keep-alive",
+    "name": "Session Keep Alive",
+    "latestVersion": "1.0.0",
+    "description": "Keeps the PWP session alive without breaking form submissions",
+    "installUrl": "https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/keep-alive.user.js"
   }
 ]
