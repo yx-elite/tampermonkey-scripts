@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         Session Keep Alive
 // @namespace    https://github.com/yx-elite/
-// @version      1.0.0
+// @version      1.1.0
 // @description  Keeps the PWP session alive without breaking form submissions
 // @author       yx-elite
+// @match        https://app.mal-pentamaster.com.my/HRMS*
+// @match        https://hrms.pentamaster.com.my/HRMS*
 // @match        https://app.mal-pentamaster.com.my/PWP*
 // @match        https://pwp.pentamaster.com.my/PWP*
 // @updateURL    https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/keep-alive.user.js
@@ -14,8 +16,29 @@
 (function() {
     'use strict';
 
+    // =================================================================
+    // IMPORTANT: Event Dispatch for Version Management after 200ms
+    // =================================================================
+    setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('UserScriptPing', {
+            detail: {
+                id: 'keep-alive',
+                version: GM_info.script.version
+            }
+        }));
+    }, 200)
+
+    // Kill Scripts after Version Management
+    const currentHost = window.location.hostname.toLowerCase();
+    const currentPath = window.location.pathname.toLowerCase();
+    if (currentPath.includes('hrms')) {
+        console.log("Exit")
+        return;
+    }
+    // =================================================================
+
     const PING_URL = '/PWP/Help/frmhelp.aspx';
-    const PING_INTERVAL_MINUTES = 0.1;
+    const PING_INTERVAL_MINUTES = 10;
 
     function keepSessionAlive() {
         fetch(PING_URL, {
