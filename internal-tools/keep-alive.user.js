@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Session Keep Alive
 // @namespace    https://github.com/yx-elite/
-// @version      1.1.0
+// @version      1.1.1
 // @description  Keeps the PWP session alive without breaking form submissions
 // @author       yx-elite
 // @match        https://app.mal-pentamaster.com.my/HRMS*
@@ -32,11 +32,12 @@
     const currentHost = window.location.hostname.toLowerCase();
     const currentPath = window.location.pathname.toLowerCase();
     if (currentPath.includes('hrms')) {
-        console.log("Exit")
+        console.log(`%c🛑 [${GM_info.script.name} v${GM_info.script.version}] %cExecution halted. (HRMS domain detected)`, 'color: #ef4444; font-weight: bold;', '');
         return;
     }
     // =================================================================
 
+    console.log(`%c🟢 [${GM_info.script.name} v${GM_info.script.version}] %cPassed domain check. Initializing background tasks...`, 'color: #10b981; font-weight: bold;', '');
     const PING_URL = '/PWP/Help/frmhelp.aspx';
     const PING_INTERVAL_MINUTES = 10;
 
@@ -47,9 +48,9 @@
         })
         .then(response => {
             if (response.ok) {
-                console.log(`🟢 [Keep-Alive] Session pinged successfully at ${new Date().toLocaleTimeString()}`);
+                console.log(`🟢 Session pinged successfully at ${new Date().toLocaleTimeString()}`);
             } else {
-                console.warn(`🔴 [Keep-Alive] Ping returned status: ${response.status}`);
+                console.warn(`🔴 Ping returned status: ${response.status}`);
             }
         })
         .catch(error => console.error('🔴 [Keep-Alive] Ping failed:', error));
@@ -58,5 +59,5 @@
     const intervalMs = PING_INTERVAL_MINUTES * 60 * 1000;
     setInterval(keepSessionAlive, intervalMs);
 
-    console.log(`🟡 [Keep-Alive] Script initialized. Pinging every ${PING_INTERVAL_MINUTES * 60} seconds.`);
+    console.log(`🟡 Script initialized. Pinging every ${PING_INTERVAL_MINUTES * 60} seconds.`);
 })();
