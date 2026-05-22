@@ -2,7 +2,7 @@
   {
     "id": "overtime-tracker",
     "name": "HRMS OT Tracker",
-    "latestVersion": "1.1.0",
+    "latestVersion": "1.1.1",
     "description": "Automatically track overtime with real time updates",
     "installUrl": "https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/overtime-tracker.user.js"
   },
