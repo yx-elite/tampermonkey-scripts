@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HRMS OT Tracker
 // @namespace    https://github.com/yx-elite/
-// @version      1.0.2
+// @version      1.1.0
 // @description  Automatically track OT with real time updates
 // @author       yx-elite
 // @match        https://app.mal-pentamaster.com.my/HRMS*
@@ -13,6 +13,29 @@
 
 (async function() {
     'use strict';
+
+    // =================================================================
+    // IMPORTANT: Event Dispatch for Version Management after 200ms
+    // =================================================================
+    setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('UserScriptPing', {
+            detail: {
+                id: 'overtime-tracker',
+                version: GM_info.script.version
+            }
+        }));
+    }, 200)
+
+    // Kill Scripts after Version Management
+    const currentHost = window.location.hostname.toLowerCase();
+    const currentPath = window.location.pathname.toLowerCase();
+    if (!currentPath.includes('hrms')) {
+        console.log(`%c🛑 [${GM_info.script.name} v${GM_info.script.version}] %cExecution halted. (HRMS domain detected)`, 'color: #ef4444; font-weight: bold;', '');
+        return;
+    }
+    // =================================================================
+
+    console.log(`%c🟢 [${GM_info.script.name} v${GM_info.script.version}] %cPassed domain check. Initializing background tasks...`, 'color: #10b981; font-weight: bold;', '');
 
     // --- 1. INJECT UI STYLES ---
     const style = document.createElement('style');
@@ -104,7 +127,7 @@
     // --- 3. THE 7:00 AM BACKGROUND FETCH ENGINE ---
     async function fetchBackgroundData() {
         try {
-            console.log("[OT Tracker] Fetching auth token...");
+            console.log("🟡 Fetching auth token...");
             let getResp = await fetch('/HRMS/Attendance/AttendanceRecords');
             let doc = new DOMParser().parseFromString(await getResp.text(), 'text/html');
 
@@ -141,10 +164,12 @@
             });
 
             let postDoc = new DOMParser().parseFromString(await postResp.text(), 'text/html');
+            console.log("🟢 Auth token fetched succesfully.");
+
             return postDoc.getElementById('EmpDetailGrid');
 
         } catch (err) {
-            console.error("[OT Tracker] Fetch failed:", err);
+            console.error("🔴 Fetch failed:", err);
             return null;
         }
     }
