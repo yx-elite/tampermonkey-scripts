@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HRMS OT Tracker
 // @namespace    https://github.com/yx-elite/
-// @version      1.1.0
+// @version      1.1.1
 // @description  Automatically track OT with real time updates
 // @author       yx-elite
 // @match        https://app.mal-pentamaster.com.my/HRMS*
@@ -24,7 +24,7 @@
                 version: GM_info.script.version
             }
         }));
-    }, 200)
+    }, 200);
 
     // Kill Scripts after Version Management
     const currentHost = window.location.hostname.toLowerCase();
@@ -202,6 +202,7 @@
                         let d = parseCellDate(3, 5);
                         if (d && !isNaN(d)) events.push({ type: 'IN', time: d });
                     }
+
                     // FIX: Accept both 'OUT', 'WORK OUT' and 'MEAL OUT'
                     if (typeOut.includes('OUT')) {
                         let d = parseCellDate(9, 11);
@@ -230,6 +231,20 @@
         });
         if (currentBlock) blocks.push(currentBlock);
 
+        // --- 5. THE MULTI-DAY SHIFT GROUPER ---
+        let shifts = {};
+        const getShiftKey = (dateObj) => {
+            let d = new Date(dateObj.getTime());
+            if (d.getHours() < 7) d.setDate(d.getDate() - 1);
+            return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        };
+
+        blocks.forEach(b => {
+            let key = getShiftKey(b.inTime);
+            if (!shifts[key]) shifts[key] = [];
+            shifts[key].push(b);
+        });
+
         // Setup Widget DOM
         let widget = document.getElementById('pm-ot-widget');
         if (!widget) {
@@ -248,47 +263,60 @@
 
         function updateDisplay() {
             const now = new Date();
-            let firstIn = blocks.length > 0 ? blocks[0].inTime : null;
 
-            let isPastData = false;
-            let adjEndTime = null;
-            let penaltyMins = 0;
-            let priorOtMs = 0;
-            let currentOtMs = 0;
+            let totalPriorOtMs = 0;
+            let totalCurrentOtMs = 0;
 
-            if (firstIn) {
-                // Check if the data is from a past date (Event triggered manually)
+            let latestFirstIn = null;
+            let latestAdjEndTime = null;
+            let latestPenaltyMins = 0;
+            let latestIsPastData = false;
+            let latestIsWeekend = false;
+
+            // Iterate over every individual grouped shift day
+            let shiftKeys = Object.keys(shifts);
+            shiftKeys.forEach(key => {
+                let shiftBlocks = shifts[key];
+                let firstIn = shiftBlocks[0].inTime;
+
+                // Check if this specific shift is in the past
                 let shiftStart = new Date(firstIn);
                 let todayRef = new Date(now);
-                if (todayRef.getHours() < 7) {
-                    todayRef.setDate(todayRef.getDate() - 1);
-                }
+                if (todayRef.getHours() < 7) todayRef.setDate(todayRef.getDate() - 1);
                 todayRef.setHours(0, 0, 0, 0);
                 shiftStart.setHours(0, 0, 0, 0);
- 
-                if (shiftStart.getTime() < todayRef.getTime()) {
-                    isPastData = true;
-                }
-                let baseEndTimeMs = firstIn.getTime() + (9.5 * 60 * 60 * 1000);
+                let isPastData = shiftStart.getTime() < todayRef.getTime();
 
-                for (let i = 0; i < blocks.length - 1; i++) {
-                    let gapStart = blocks[i].outTime;
-                    let gapEnd = blocks[i+1].inTime;
-                    if (gapStart && gapEnd) {
-                        let gapHour = gapStart.getHours();
-                        if (gapHour >= 11 && gapHour <= 15) {
-                            let gapMs = gapEnd.getTime() - gapStart.getTime();
-                            if (gapMs > 60 * 60 * 1000) {
-                                penaltyMins = Math.floor((gapMs - (60 * 60 * 1000)) / 60000);
+                let dayOfWeek = firstIn.getDay();
+                let isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+                let adjEndTime;
+                let penaltyMins = 0;
+
+                if (isWeekend) {
+                    adjEndTime = new Date(firstIn.getTime()); // Weekend Mode
+                } else {
+                    let baseEndTimeMs = firstIn.getTime() + (9.5 * 60 * 60 * 1000); // 9.5 hours
+
+                    // Lunch Penalty Check for this specific day
+                    for (let i = 0; i < shiftBlocks.length - 1; i++) {
+                        let gapStart = shiftBlocks[i].outTime;
+                        let gapEnd = shiftBlocks[i+1].inTime;
+                        if (gapStart && gapEnd) {
+                            let gapHour = gapStart.getHours();
+                            if (gapHour >= 11 && gapHour <= 15) {
+                                let gapMs = gapEnd.getTime() - gapStart.getTime();
+                                if (gapMs > 60 * 60 * 1000) {
+                                    penaltyMins = Math.floor((gapMs - (60 * 60 * 1000)) / 60000);
+                                }
+                                break;
                             }
-                            break;
                         }
                     }
+                    adjEndTime = new Date(baseEndTimeMs + (penaltyMins * 60000));
                 }
 
-                adjEndTime = new Date(baseEndTimeMs + (penaltyMins * 60000));
-
-                blocks.forEach(b => {
+                // Add up OT just for this specific day
+                shiftBlocks.forEach(b => {
                     let bIn = b.inTime.getTime();
                     let bOut = b.outTime ? b.outTime.getTime() : (isPastData ? bIn : now.getTime());
                     let endRef = adjEndTime.getTime();
@@ -298,16 +326,23 @@
 
                     if (otEnd > otStart) {
                         let duration = otEnd - otStart;
-                        if (b.outTime) {
-                            priorOtMs += duration;
+                        if (b.outTime || isPastData) {
+                            totalPriorOtMs += duration;
                         } else {
-                            currentOtMs += duration;
+                            totalCurrentOtMs += duration; // Only happens on an active unclosed block today
                         }
                     }
                 });
-            }
 
-            const totalOtMs = priorOtMs + currentOtMs;
+                // The last iterated key will override these with the most recent shift's data
+                latestFirstIn = firstIn;
+                latestAdjEndTime = adjEndTime;
+                latestPenaltyMins = penaltyMins;
+                latestIsPastData = isPastData;
+                latestIsWeekend = isWeekend;
+            });
+
+            const totalOtMs = totalPriorOtMs + totalCurrentOtMs;
             const totalMins = Math.floor(totalOtMs / 60000);
             const hours = Math.floor(totalMins / 60);
             const mins = totalMins % 60;
@@ -315,40 +350,57 @@
             const target1Mins = Math.ceil((totalMins + 1) / 30) * 30;
             const target2Mins = target1Mins + 30;
 
-            // UI Text Handlers for "No Data" states
+            // UI Text Handlers
             let t1TimeText = "--:--"; let t1SubText = "-"; let t1Title = "Upcoming Target"; let t1SubTitle = "-";
             let t2TimeText = "--:--"; let t2SubText = "-"; let t2Title = "Next Target"; let t2SubTitle = "-";
 
-            if (!firstIn) {
+            if (!latestFirstIn) {
                 t1Title = "Awaiting Data"; t1SubText = "No active shift";
                 t2Title = "Awaiting Data"; t2SubText = "No active shift";
-            } else if (isPastData) {
-                // Displaying historical data
+            } else if (latestIsPastData) {
                 t1Title = "Past Record"; t1SubText = "-"; t1SubTitle = "Targets Disabled";
                 t2Title = "Past Record"; t2SubText = "-"; t2SubTitle = "Targets Disabled";
-            } else if (firstIn && totalOtMs > 0) {
-                t1SubTitle = `${(target1Mins/60).toFixed(1)}h Milestone`;
-                t1TimeText = formatAMPM(new Date(now.getTime() + (target1Mins - totalMins) * 60000));
-                t1SubText = `in ${target1Mins - totalMins} min`;
+            } else {
+                // Determine if they are currently generating active OT to predict the exact time
+                let isCurrentlyWorkingOT = (now.getTime() >= latestAdjEndTime.getTime()) && (totalCurrentOtMs > 0 || !blocks[blocks.length-1].outTime);
+                let otStartTimeRef = isCurrentlyWorkingOT ? now.getTime() : Math.max(now.getTime(), latestAdjEndTime.getTime());
 
-                t2SubTitle = `${(target2Mins/60).toFixed(1)}h Milestone`;
-                t2TimeText = formatAMPM(new Date(now.getTime() + (target2Mins - totalMins) * 60000));
-                t2SubText = `in ${target2Mins - totalMins} min`;
-            } else if (firstIn && totalOtMs === 0) {
-                let msToOT = adjEndTime.getTime() - now.getTime();
-                if (msToOT > 0) {
-                    t1Title = "OT Starts At";
-                    t1SubTitle = "Shift End";
-                    t1TimeText = formatAMPM(adjEndTime);
-                    t1SubText = `in ${Math.floor(msToOT / 60000)} min`;
+                let minsToT1 = target1Mins - totalMins;
+                let minsToT2 = target2Mins - totalMins;
 
-                    t2SubTitle = "0.5h Milestone";
-                    t2TimeText = formatAMPM(new Date(adjEndTime.getTime() + (30 * 60000)));
-                    t2SubText = `in ${Math.floor(msToOT / 60000) + 30} min`;
+                if (totalOtMs > 0 || latestIsWeekend) {
+                    t1SubTitle = `${(target1Mins/60).toFixed(1)}h Milestone`;
+                    t1TimeText = formatAMPM(new Date(otStartTimeRef + (minsToT1 * 60000)));
+                    t1SubText = `in ${minsToT1} min`;
+
+                    t2SubTitle = `${(target2Mins/60).toFixed(1)}h Milestone`;
+                    t2TimeText = formatAMPM(new Date(otStartTimeRef + (minsToT2 * 60000)));
+                    t2SubText = `in ${minsToT2} min`;
+                } else {
+                    let msToOT = latestAdjEndTime.getTime() - now.getTime();
+                    if (msToOT > 0) {
+                        t1Title = "OT Starts At";
+                        t1SubTitle = "Shift End";
+                        t1TimeText = formatAMPM(latestAdjEndTime);
+                        t1SubText = `in ${Math.floor(msToOT / 60000)} min`;
+
+                        t2SubTitle = "0.5h Milestone";
+                        t2TimeText = formatAMPM(new Date(latestAdjEndTime.getTime() + (30 * 60000)));
+                        t2SubText = `in ${Math.floor(msToOT / 60000) + 30} min`;
+                    }
                 }
             }
 
-            let penaltyHtml = penaltyMins > 0 ? `<div class="pm-penalty-tag">+${penaltyMins}m Lunch</div>` : '';
+            let penaltyHtml = '';
+            let standardEndLabel = "Standard End";
+            let standardEndValue = latestAdjEndTime ? formatAMPM(latestAdjEndTime) : "--:--";
+
+            if (latestIsWeekend) {
+                standardEndLabel = "Weekend Mode";
+                standardEndValue = '<span style="color:#34d399; font-size:11px;">All Hours = OT</span>';
+            } else {
+                penaltyHtml = latestPenaltyMins > 0 ? `<div class="pm-penalty-tag">+${latestPenaltyMins}m Lunch</div>` : '';
+            }
 
             widget.innerHTML = `
                 <div class="pm-ot-header">
@@ -362,20 +414,20 @@
                     <div class="pm-ot-grid">
                         <div class="pm-ot-card">
                             <span class="pm-ot-label">Start Time</span>
-                            <span class="pm-ot-value">${formatAMPM(firstIn)}</span>
+                            <span class="pm-ot-value">${latestFirstIn ? formatAMPM(latestFirstIn) : "--:--"}</span>
                         </div>
                         <div class="pm-ot-card">
-                            <span class="pm-ot-label">Standard End</span>
-                            <span class="pm-ot-value">${formatAMPM(adjEndTime)}</span>
+                            <span class="pm-ot-label">${standardEndLabel}</span>
+                            <span class="pm-ot-value">${standardEndValue}</span>
                             ${penaltyHtml}
                         </div>
                         <div class="pm-ot-card">
                             <span class="pm-ot-label">Prior OT</span>
-                            <span class="pm-ot-value" style="color: #60a5fa;">${msToReadable(priorOtMs)}</span>
+                            <span class="pm-ot-value" style="color: #60a5fa;">${msToReadable(totalPriorOtMs)}</span>
                         </div>
                         <div class="pm-ot-card">
                             <span class="pm-ot-label">Current OT</span>
-                            <span class="pm-ot-value" style="color: #60a5fa;">${msToReadable(currentOtMs)}</span>
+                            <span class="pm-ot-value" style="color: #60a5fa;">${msToReadable(totalCurrentOtMs)}</span>
                         </div>
                     </div>
 
