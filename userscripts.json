@@ -9,8 +9,8 @@
   {
     "id": "keep-alive",
     "name": "Session Keep Alive",
-    "latestVersion": "1.1.1",
-    "description": "Keeps the PWP session alive without breaking form submissions",
+    "latestVersion": "1.2.0",
+    "description": "Keeps the PWP, HRMS, and iBusiness sessions alive without breaking form submissions",
     "installUrl": "https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/keep-alive.user.js"
   }
 ]
