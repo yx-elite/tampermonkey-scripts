@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HRMS OT Tracker
 // @namespace    https://github.com/yx-elite/
-// @version      1.1.1
+// @version      1.1.2
 // @description  Automatically track OT with real time updates
 // @author       yx-elite
 // @match        https://app.mal-pentamaster.com.my/HRMS*
@@ -258,6 +258,23 @@
                     const icon = widget.querySelector('.pm-ot-toggle');
                     icon.innerHTML = widget.classList.contains('minimized') ? 'EXPAND' : 'COLLAPSE';
                 }
+            });
+            
+            // --- AUTO-COLLAPSE (out of focus) ---
+            const collapseWidget = () => {
+                if (!widget.classList.contains('minimized')) {
+                    widget.classList.add('minimized');
+                    const btn = widget.querySelector('.pm-ot-toggle');
+                    if (btn) btn.innerHTML = 'EXPAND';
+                }
+            };
+ 
+            // Collapse when the browser tab/window loses focus
+            window.addEventListener('blur', collapseWidget);
+ 
+            // Collapse when clicking anywhere outside the widget
+            document.addEventListener('click', (e) => {
+                if (!widget.contains(e.target)) collapseWidget();
             });
         }
 
