@@ -16,7 +16,7 @@
     {
     "id": "pwp-enhancer",
     "name": "PWP Enhancer - Encrypted",
-    "latestVersion": "2.6.2",
+    "latestVersion": "2.6.3",
     "description": "Enhance useful features for PWP",
     "installUrl": "https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/pwp-enhancer-encrypted.user.js"
   }
