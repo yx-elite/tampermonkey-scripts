@@ -6,8 +6,8 @@
 // @author       yx-elite
 // @match        https://pwp.pentamaster.com.my/PWP*
 // @match        https://app.mal-pentamaster.com.my/PWP*
-// @updateURL    https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/pwp-enhancer-encrypted.user.js
-// @downloadURL  https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/pwp-enhancer-encrypted.user.js
+// @updateURL    https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/refs/heads/main/pwp-enchancer-encrypted.user.js
+// @downloadURL  https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/refs/heads/main/pwp-enchancer-encrypted.user.js
 // @run-at       document-idle
 // @noframes
 // @grant        GM_addStyle
