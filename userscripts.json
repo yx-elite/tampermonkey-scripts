@@ -12,5 +12,12 @@
     "latestVersion": "1.2.0",
     "description": "Keeps the PWP, HRMS, and iBusiness sessions alive without breaking form submissions",
     "installUrl": "https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/internal-tools/keep-alive.user.js"
+  },
+    {
+    "id": "pwp-enhancer",
+    "name": "PWP Enhancer - Encrypted",
+    "latestVersion": "2.6.2",
+    "description": "Enhance useful features for PWP",
+    "installUrl": "https://raw.githubusercontent.com/yx-elite/tampermonkey-scripts/main/pwp-enhancer-encrypted.user.js"
   }
 ]
