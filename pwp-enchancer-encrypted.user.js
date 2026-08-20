@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PWP Features Enhancer - Encrypted
 // @namespace    https://github.com/yx-elite/
-// @version      2.6.1
+// @version      2.6.2
 // @description  Enhance useful features for PWP
 // @author       yx-elite
 // @match        https://pwp.pentamaster.com.my/PWP*
